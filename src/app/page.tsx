@@ -1,69 +1,123 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import { useEffect, useRef } from "react";
+import { currentStreak } from "@/lib/analytics";
+import { DailyActivity } from "@/components/DailyActivity";
+import { DifficultyBreakdown } from "@/components/DifficultyBreakdown";
+import { ErrorBanner } from "@/components/ErrorBanner";
+import { GoalProgress } from "@/components/GoalProgress";
+import { Header } from "@/components/Header";
+import { CheckCircleIcon, FlameIcon, TrophyIcon } from "@/components/icons";
+import { RecentSolves } from "@/components/RecentSolves";
+import { Heatmap } from "@/components/Heatmap";
+import { StatCard } from "@/components/StatCard";
+import { Streaks } from "@/components/Streaks";
+import { TopicBreakdown } from "@/components/TopicBreakdown";
+import { useTracker } from "@/lib/useTracker";
+
+export default function Dashboard() {
+  const { settings, snapshot, submissions, hydrated, syncing, error, sync } = useTracker();
+  const autoSynced = useRef(false);
+
+  // First visit with a username but no cached data: sync automatically once.
+  useEffect(() => {
+    if (hydrated && settings.username && !snapshot && !autoSynced.current) {
+      autoSynced.current = true;
+      sync();
+    }
+  }, [hydrated, settings.username, snapshot, sync]);
+
+  if (!hydrated) return null;
+
+  const streak = snapshot ? currentStreak(snapshot.calendar) : 0;
+
+  if (!settings.username) {
+    return (
+      <div className="mx-auto max-w-md py-16 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Welcome to DSA Tracker</h1>
+        <p className="mt-2 text-sm text-muted">
+          You solve problems on LeetCode.com as usual — this dashboard reads your public profile and turns it into
+          stats, streaks, and charts. Nothing to install, no login here.
+        </p>
+        <ol className="mt-8 space-y-4 text-left text-sm">
+          <li className="flex gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fg text-xs font-medium text-page">
+              1
+            </span>
+            <span className="text-muted">
+              Solve problems on <span className="text-fg">leetcode.com</span> like you normally would.
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fg text-xs font-medium text-page">
+              2
+            </span>
+            <span className="text-muted">
+              Enter your <span className="text-fg">LeetCode username</span> in Settings — that&apos;s the only setup.
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fg text-xs font-medium text-page">
+              3
+            </span>
+            <span className="text-muted">
+              Come back here and hit <span className="text-fg">Sync now</span> whenever you want fresh numbers.
+            </span>
+          </li>
+        </ol>
+        <Link
+          href="/settings"
+          className="mt-8 inline-block rounded-md bg-fg px-5 py-2.5 text-sm font-medium text-page hover:opacity-80"
+        >
+          Get started →
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+    <div className="space-y-8">
+      <Header snapshot={snapshot} username={settings.username} syncing={syncing} onSync={() => sync()} />
+
+      {error && <ErrorBanner message={error} onRetry={() => sync()} retrying={syncing} />}
+
+      {!snapshot && !error && <p className="text-sm text-muted">Fetching your stats…</p>}
+
+      {snapshot && (
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatCard
+              icon={<CheckCircleIcon />}
+              label="Total solved"
+              value={snapshot.solved.All}
+              hint={`of ${snapshot.total.All} problems`}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+            <StatCard
+              icon={<TrophyIcon />}
+              label="Ranking"
+              value={snapshot.ranking ? `#${snapshot.ranking.toLocaleString()}` : "—"}
+            />
+            <StatCard
+              icon={<FlameIcon />}
+              label="Current streak"
+              value={`${streak} day${streak === 1 ? "" : "s"} 🔥`}
+              hint={streak === 0 ? "solve something today to start one" : "consecutive active days"}
+            />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <GoalProgress solved={snapshot.solved.All} goal={settings.goal} />
+            <DifficultyBreakdown snapshot={snapshot} />
+          </div>
+          <Streaks calendar={snapshot.calendar} activeDays={snapshot.totalActiveDays} />
+          <Heatmap calendar={snapshot.calendar} />
+          <DailyActivity calendar={snapshot.calendar} submissions={submissions} />
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            <RecentSolves submissions={submissions} />
+            <TopicBreakdown tags={snapshot.tags} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
